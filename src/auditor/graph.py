@@ -5,6 +5,17 @@ from src.auditor.models import AuditState, AuditReport
 from src.auditor.agents import injection_detector, hallucination_auditor, leakage_scanner
 from src.auditor.tasks import get_injection_task, get_hallucination_task, get_leakage_task
 
+def extract_finding(result, default_type):
+    if hasattr(result, "pydantic") and result.pydantic is not None:
+        return result.pydantic.model_dump()
+    return {
+        "vulnerability_type": default_type,
+        "score": 0,
+        "severity": "Low",
+        "reasoning": f"Failed to parse structured output. Raw: {getattr(result, 'raw', str(result))}",
+        "recommended_fix": "Review logs."
+    }
+
 # State node functions
 def run_prompt_injection(state: AuditState):
     print("--- Running Prompt Injection Audit ---")
@@ -15,8 +26,7 @@ def run_prompt_injection(state: AuditState):
         verbose=False
     )
     result = crew.kickoff()
-    # Crew result as pydantic model -> dict
-    state["findings"].append(result.model_dump())
+    state["findings"].append(extract_finding(result, "Prompt Injection"))
     return {"findings": state["findings"]}
 
 def run_hallucination_check(state: AuditState):
@@ -28,7 +38,7 @@ def run_hallucination_check(state: AuditState):
         verbose=False
     )
     result = crew.kickoff()
-    state["findings"].append(result.model_dump())
+    state["findings"].append(extract_finding(result, "Hallucination"))
     return {"findings": state["findings"]}
 
 def run_data_leakage_check(state: AuditState):
@@ -40,7 +50,7 @@ def run_data_leakage_check(state: AuditState):
         verbose=False
     )
     result = crew.kickoff()
-    state["findings"].append(result.model_dump())
+    state["findings"].append(extract_finding(result, "Data Leakage"))
     return {"findings": state["findings"]}
 
 def compile_final_report(state: AuditState):
@@ -87,14 +97,6 @@ def run_audit() -> dict:
     app = build_audit_graph()
     initial_state = AuditState(status="Running", findings=[], report=None)
     
-    # Run graph
-    for output in app.stream(initial_state):
-        # We can yield or print progress here
-        pass
-        
-    # Get final state
-    final_state = app.get_state(app.config_specs[0]).values if hasattr(app, 'get_state') else None
-    
-    # Simple invoke since we just want the end result for the API
-    final_output = app.invoke(initial_state)
-    return final_output["report"]
+    # Run graph synchronously and get final state
+    final_state = app.invoke(initial_state)
+    return final_state["report"]

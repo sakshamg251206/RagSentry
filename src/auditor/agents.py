@@ -3,7 +3,7 @@ from crewai import Agent, Task, Crew, Process, LLM
 from crewai.tools import tool
 
 # Assuming GROQ_API_KEY is loaded in environment
-llm = LLM(model="groq/mixtral-8x7b-32768", temperature=0.7)
+llm = LLM(model="groq/llama-3.3-70b-versatile", temperature=0.7)
 
 # We create a simple tool that allows the agents to query the target RAG system
 @tool("Target RAG Query Tool")

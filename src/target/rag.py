@@ -27,7 +27,7 @@ def get_rag_chain():
     # Initialize Groq LLM (Ensure GROQ_API_KEY is in env)
     llm = ChatGroq(
         temperature=0.7, 
-        model_name="mixtral-8x7b-32768"
+        model_name="llama-3.3-70b-versatile"
     )
 
     # Vulnerable Prompt (susceptible to injection and hallucination)
